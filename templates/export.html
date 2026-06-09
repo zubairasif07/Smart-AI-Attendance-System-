@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Export Reports{% endblock %}
+{% block topbar_title %}Export Reports{% endblock %}
+{% block topbar_sub %}Download attendance data and analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Export & Reports</h1>
+  <p>Download CSV attendance logs or generate visual analytics</p>
+</div>
+
+<div class="grid-2" style="align-items:start;gap:24px;">
+
+  <!-- CSV Export -->
+  <div class="card">
+    <div class="card-title"><i class="fas fa-file-csv"></i> Export CSV</div>
+    <p style="font-size:13.5px;color:var(--text-3);margin-bottom:20px;">
+      Filter by classroom and subject, then download the attendance report as a CSV file.
+    </p>
+    <form method="GET" action="{{ url_for('export_csv') }}">
+      <div class="form-group">
+        <label class="form-label">Classroom</label>
+        <select name="classroom" class="form-control" id="csvClassroom" onchange="updateCsvSubjects(this.value)">
+          <option value="">All Classrooms</option>
+          {% for c in classrooms %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Subject</label>
+        <select name="subject" class="form-control" id="csvSubject">
+          <option value="">All Subjects</option>
+          {% for s in all_subjects %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success btn-block btn-lg">
+        <i class="fas fa-download"></i> Download CSV
+      </button>
+    </form>
+  </div>
+
+  <!-- Graph Report -->
+  <div class="card">
+    <div class="card-title"><i class="fas fa-chart-bar"></i> Attendance Graph</div>
+    <p style="font-size:13.5px;color:var(--text-3);margin-bottom:20px;">
+      Generate a bar chart showing total attendance counts per student. The image will open in a new tab.
+    </p>
+
+    <a href="{{ url_for('export_graph') }}" target="_blank" class="btn btn-amber btn-block btn-lg" style="margin-bottom:20px;">
+      <i class="fas fa-chart-bar"></i> Generate &amp; View Graph
+    </a>
+
+    <div style="background:var(--surface3);border:1px solid var(--border);border-radius:10px;padding:18px;">
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">
+        What this generates
+      </div>
+      <ul style="font-size:13px;color:var(--text-2);list-style:none;display:flex;flex-direction:column;gap:8px;">
+        <li><i class="fas fa-check" style="color:var(--green);margin-right:8px;"></i> Bar chart per registered student</li>
+        <li><i class="fas fa-check" style="color:var(--green);margin-right:8px;"></i> Total present count displayed</li>
+        <li><i class="fas fa-check" style="color:var(--green);margin-right:8px;"></i> Saved to <span class="mono" style="font-size:12px;">reports/</span> folder</li>
+        <li><i class="fas fa-check" style="color:var(--green);margin-right:8px;"></i> PNG format, ready to share</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Quick Download Links -->
+<div class="card" style="margin-top:24px;">
+  <div class="card-title"><i class="fas fa-bolt"></i> Quick Exports</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <a href="{{ url_for('export_csv') }}" class="btn btn-ghost">
+      <i class="fas fa-file-csv"></i> All Attendance (CSV)
+    </a>
+    <a href="{{ url_for('attendance_records') }}" class="btn btn-ghost">
+      <i class="fas fa-table"></i> Browse Records Online
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const allSubjectsMap = {{ {} | tojson }};
+  // We'll just reload subjects via API when classroom changes
+  function updateCsvSubjects(classroom) {
+    const subjectSel = document.getElementById('csvSubject');
+    subjectSel.innerHTML = '<option value="">Loading...</option>';
+    fetch('/api/subjects?classroom=' + encodeURIComponent(classroom))
+      .then(r => r.json())
+      .then(subjects => {
+        subjectSel.innerHTML = '<option value="">All Subjects</option>' +
+          subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+      });
+  }
+</script>
+{% endblock %}

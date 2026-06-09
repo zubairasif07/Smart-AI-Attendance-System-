@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Student Portal{% endblock %}
+{% block topbar_title %}Student Portal{% endblock %}
+{% block topbar_sub %}View your attendance or scan your face{% endblock %}
+
+{% block head %}
+<style>
+  .student-hero {
+    max-width: 640px; margin: 0 auto;
+    text-align: center; padding: 40px 20px 20px;
+  }
+  .student-hero h1 {
+    font-size: 36px; font-weight: 800;
+    background: linear-gradient(135deg, var(--teal), #06b6d4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 12px;
+  }
+  .student-hero p { font-size:15px; color:var(--text-3); margin-bottom:36px; line-height:1.7; }
+
+  .action-tabs {
+    display: flex; gap: 0; margin-bottom: 28px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 4px; max-width: 440px; margin: 0 auto 28px;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px 16px; border: none; border-radius: 9px;
+    background: transparent; color: var(--text-3); font-family: inherit;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s;
+  }
+  .tab-btn.active {
+    background: var(--surface3); color: var(--text-1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .scan-card {
+    background: var(--surface);
+    border: 1px solid rgba(20,184,166,0.25);
+    border-radius: 20px; padding: 36px;
+    text-align: center; max-width: 480px; margin: 0 auto;
+  }
+  .scan-icon {
+    width: 80px; height: 80px; border-radius: 20px;
+    background: rgba(20,184,166,0.1); border: 1px solid rgba(20,184,166,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px; color: var(--teal); margin: 0 auto 24px;
+    box-shadow: 0 8px 32px var(--teal-glow);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="student-hero">
+  <div style="display:inline-flex;align-items:center;gap:8px;
+    background:rgba(20,184,166,0.1);border:1px solid rgba(20,184,166,0.25);
+    border-radius:30px;padding:6px 18px;font-size:13px;
+    color:var(--teal);font-weight:600;margin-bottom:24px;">
+    <i class="fas fa-id-card"></i> Student Portal
+  </div>
+  <h1>Your Attendance Hub</h1>
+  <p>Enter your roll number to view attendance records, or scan your face to mark your attendance for the active session.</p>
+
+  <!-- Tabs -->
+  <div class="action-tabs">
+    <button class="tab-btn active" onclick="switchTab('view')"><i class="fas fa-eye"></i> View Records</button>
+    <button class="tab-btn" onclick="switchTab('scan')"><i class="fas fa-camera"></i> Scan Face</button>
+  </div>
+
+  <!-- View Records Tab -->
+  <div class="tab-panel active" id="tabView">
+    <div class="scan-card" style="border-color:rgba(99,102,241,0.25);">
+      <div style="width:80px;height:80px;border-radius:20px;
+        background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);
+        display:flex;align-items:center;justify-content:center;
+        font-size:36px;color:var(--accent2);margin:0 auto 24px;
+        box-shadow:0 8px 32px var(--accent-glow);">
+        <i class="fas fa-table-list"></i>
+      </div>
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">View Attendance</h3>
+      <p style="font-size:13px;color:var(--text-3);margin-bottom:24px;">
+        Enter your roll number to see all subject-wise attendance records.
+      </p>
+      <form method="GET" action="{{ url_for('student_attendance') }}">
+        <div class="form-group" style="text-align:left;">
+          <label class="form-label">Roll Number</label>
+          <input type="text" name="roll_no" class="form-control"
+                 placeholder="e.g. CS2024001" required style="font-size:15px;padding:12px 16px;"/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:8px;">
+          <i class="fas fa-search"></i> View My Attendance
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scan Face Tab -->
+  <div class="tab-panel" id="tabScan">
+    <div class="scan-card">
+      <div class="scan-icon"><i class="fas fa-camera"></i></div>
+      <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">Face Scan Attendance</h3>
+      <p style="font-size:13px;color:var(--text-3);margin-bottom:24px;">
+        Enter your roll number. The system will open the webcam and verify your identity to mark attendance.
+      </p>
+      <form method="POST" action="{{ url_for('student_scan') }}" id="scanForm">
+        <div class="form-group" style="text-align:left;">
+          <label class="form-label">Roll Number</label>
+          <input type="text" name="roll_no" class="form-control"
+                 placeholder="e.g. CS2024001" required style="font-size:15px;padding:12px 16px;"/>
+        </div>
+        <button type="submit" class="btn btn-teal btn-block btn-lg" id="scanBtn" style="margin-top:8px;">
+          <i class="fas fa-camera"></i> Scan Face &amp; Mark Attendance
+        </button>
+      </form>
+      <p style="font-size:11.5px;color:var(--text-3);margin-top:16px;">
+        <i class="fas fa-shield-halved"></i> A webcam window will open. Face the camera clearly for best results.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'view') || (i === 1 && tab === 'scan'));
+    });
+    document.getElementById('tabView').classList.toggle('active', tab === 'view');
+    document.getElementById('tabScan').classList.toggle('active', tab === 'scan');
+  }
+
+  document.getElementById('scanForm')?.addEventListener('submit', function(){
+    const btn = document.getElementById('scanBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening camera...';
+    btn.disabled = true;
+  });
+</script>
+{% endblock %}

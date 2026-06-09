@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block topbar_title %}Welcome{% endblock %}
+{% block topbar_sub %}Smart Face Recognition Attendance System{% endblock %}
+
+{% block content %}
+<style>
+  .hero {
+    text-align: center;
+    padding: 80px 20px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 30px; padding: 6px 18px; font-size: 13px;
+    color: var(--accent2); font-weight: 600; margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-size: 52px; font-weight: 800; line-height: 1.1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, var(--accent2) 50%, var(--teal) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p { font-size: 17px; color: var(--text-2); line-height: 1.7; max-width: 540px; margin: 0 auto 40px; }
+  
+  .features-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px; max-width: 900px; margin: 60px auto 0;
+  }
+  .feature-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+  }
+  .feature-icon {
+    font-size: 32px; margin-bottom: 14px;
+  }
+  .feature-item h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-1); }
+  .feature-item p { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  .portal-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px; max-width: 740px; margin: 60px auto 0;
+  }
+  .portal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-decoration: none;
+    transition: transform .25s, box-shadow .25s, border-color .25s;
+    position: relative; overflow: hidden;
+    display: block;
+  }
+  .portal-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border2);
+  }
+  .portal-card.teacher:hover { box-shadow: 0 12px 40px var(--accent-glow); border-color: rgba(99,102,241,0.4); }
+  .portal-card.student:hover { box-shadow: 0 12px 40px var(--teal-glow); border-color: rgba(20,184,166,0.4); }
+
+  .portal-card::before {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    border-radius: 50%; opacity: 0.06;
+    transition: opacity .3s;
+  }
+  .portal-card.teacher::before { background: var(--accent); }
+  .portal-card.student::before { background: var(--teal); }
+  .portal-card:hover::before   { opacity: 0.12; }
+
+  .portal-icon {
+    width: 60px; height: 60px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 20px;
+  }
+  .portal-card.teacher .portal-icon { background: rgba(99,102,241,0.15); color: var(--accent2); box-shadow: 0 4px 16px var(--accent-glow); }
+  .portal-card.student .portal-icon { background: rgba(20,184,166,0.15); color: var(--teal);    box-shadow: 0 4px 16px var(--teal-glow); }
+
+  .portal-card h2 { font-size: 22px; font-weight: 700; color: var(--text-1); margin-bottom: 10px; }
+  .portal-card p  { font-size: 14px; color: var(--text-3); line-height: 1.6; }
+
+  .portal-arrow {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 24px; font-size: 13px; font-weight: 600;
+  }
+  .portal-card.teacher .portal-arrow { color: var(--accent2); }
+  .portal-card.student .portal-arrow { color: var(--teal); }
+
+  .tech-pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 60px; }
+  .tech-pill {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 30px; padding: 6px 16px;
+    font-size: 12px; color: var(--text-3); font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tech-pill i { color: var(--accent2); }
+</style>
+
+<div class="hero">
+  <div class="hero-badge">
+    <i class="fas fa-sparkles"></i>
+    AI-Powered Attendance
+  </div>
+  <h1>Welcome to FaceTrack AI</h1>
+  <p>Automate attendance tracking using real-time face recognition. Simple, fast, and secure.</p>
+
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fas fa-camera"></i></div>
+      <h3>Face Recognition</h3>
+      <p>Advanced AI-powered face detection and matching for accurate student identification.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fas fa-zap"></i></div>
+      <h3>Real-Time Processing</h3>
+      <p>Instant attendance marking with live camera feed and immediate verification.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
+      <h3>Analytics & Reports</h3>
+      <p>Comprehensive attendance reports, subject-wise analysis, and exportable records.</p>
+    </div>
+  </div>
+
+  <div class="portal-grid">
+    <a href="{{ url_for('login') }}" class="portal-card teacher">
+      <div class="portal-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+      <h2>Teacher Portal</h2>
+      <p>Manage students, classrooms, subjects, and run face recognition attendance sessions.</p>
+      <div class="portal-arrow">Teacher Login <i class="fas fa-arrow-right"></i></div>
+    </a>
+    <a href="{{ url_for('student_dashboard') }}" class="portal-card student">
+      <div class="portal-icon"><i class="fas fa-user-graduate"></i></div>
+      <h2>Student Portal</h2>
+      <p>Scan your face to mark attendance and view your complete attendance history by subject.</p>
+      <div class="portal-arrow">View Attendance <i class="fas fa-arrow-right"></i></div>
+    </a>
+  </div>
+
+  <div class="tech-pills">
+    <div class="tech-pill"><i class="fab fa-python"></i> Python</div>
+    <div class="tech-pill"><i class="fas fa-flask"></i> Flask</div>
+    <div class="tech-pill"><i class="fas fa-video"></i> OpenCV</div>
+    <div class="tech-pill"><i class="fas fa-face-smile"></i> face_recognition</div>
+    <div class="tech-pill"><i class="fas fa-database"></i> SQLite</div>
+  </div>
+</div>
+{% endblock %}

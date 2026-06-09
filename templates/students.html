@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+{% block topbar_title %}Students{% endblock %}
+{% block topbar_sub %}Manage student registrations{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Registration Progress Toast ─────────────────────────────────── */
+  #regToast {
+    position: fixed; bottom: 32px; right: 28px; z-index: 500;
+    width: 360px;
+    background: linear-gradient(135deg, rgba(17,24,39,0.98), rgba(13,18,32,0.98));
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(99,102,241,0.2);
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    backdrop-filter: blur(20px);
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .35s ease;
+  }
+  #regToast.visible { display: flex; transform: translateY(0); opacity: 1; }
+  #regToast.show    { transform: translateY(0) !important; opacity: 1 !important; }
+
+  .toast-header {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .toast-icon-wrap {
+    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .toast-icon-wrap.running { background: rgba(99,102,241,0.18); color: var(--accent2); }
+  .toast-icon-wrap.done    { background: rgba(34,197,94,0.18);  color: var(--green); }
+  .toast-icon-wrap.error   { background: rgba(239,68,68,0.18);  color: var(--red); }
+
+  .toast-title  { font-size: 14px; font-weight: 700; color: var(--text-1); }
+  .toast-msg    { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+
+  .toast-progress-track {
+    height: 4px; border-radius: 4px;
+    background: var(--surface3);
+    overflow: hidden;
+  }
+  .toast-progress-bar {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+    width: 0%;
+    transition: width .4s ease;
+    animation: progress-shimmer 1.8s ease infinite;
+  }
+  @keyframes progress-shimmer {
+    0%   { filter: brightness(1); }
+    50%  { filter: brightness(1.4); }
+    100% { filter: brightness(1); }
+  }
+
+  /* ── Success Banner ───────────────────────────────────────────────── */
+  #successBanner {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    z-index: 600; display: none; opacity: 0;
+    width: min(500px, 90vw);
+    background: linear-gradient(135deg, rgba(22,163,74,0.2), rgba(20,184,166,0.15));
+    border: 1px solid rgba(34,197,94,0.4);
+    border-radius: 18px;
+    padding: 22px 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(34,197,94,0.2);
+    backdrop-filter: blur(20px);
+    transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .45s ease;
+    text-align: center;
+  }
+  #successBanner.show {
+    display: block; opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .banner-emoji  { font-size: 42px; line-height: 1; margin-bottom: 10px; }
+  .banner-title  { font-size: 20px; font-weight: 800; color: var(--green); margin-bottom: 6px; }
+  .banner-sub    { font-size: 14px; color: var(--text-2); margin-bottom: 16px; }
+  .banner-close  {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600;
+    color: var(--green); cursor: pointer; transition: all .2s;
+  }
+  .banner-close:hover { background: rgba(34,197,94,0.25); transform: scale(1.02); }
+
+  /* pulse ring on success icon */
+  @keyframes ping {
+    0%   { transform: scale(1); opacity:.8; }
+    80%  { transform: scale(2); opacity:0; }
+    100% { opacity:0; }
+  }
+  .ping-ring {
+    position: absolute; inset: 0; border-radius: 12px;
+    border: 2px solid var(--green);
+    animation: ping 1.2s ease-out 3;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex" style="align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+  <div>
+    <h1>Student Management</h1>
+    <p>Register new students and manage existing records</p>
+  </div>
+  <button class="btn btn-primary" id="openRegisterBtn"
+          onclick="document.getElementById('registerModal').style.display='flex'">
+    <i class="fas fa-user-plus"></i> Register New Student
+  </button>
+</div>
+
+<!-- Student Table -->
+<div class="card">
+  <div class="card-title"><i class="fas fa-users"></i> Registered Students ({{ students|length }})</div>
+  {% if students %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>Roll No.</th><th>Department</th>
+          <th>Semester</th><th>Classroom</th>
+        </tr>
+      </thead>
+      <tbody id="studentTableBody">
+        {% for s in students %}
+        <tr>
+          <td class="text-muted mono">{{ s[0] }}</td>
+          <td class="fw-700">{{ s[1] }}</td>
+          <td><span class="badge badge-accent mono">{{ s[2] }}</span></td>
+          <td>{{ s[3] or '—' }}</td>
+          <td>{{ s[4] or '—' }}</td>
+          <td><span class="badge badge-teal">{{ s[5] or '—' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state" id="emptyState">
+    <i class="fas fa-user-slash"></i>
+    <p>No students registered yet. Click "Register New Student" to get started.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Register Modal -->
+<div id="registerModal" style="
+  display:none; position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,0.7); backdrop-filter:blur(8px);
+  align-items:center; justify-content:center;">
+  <div style="
+    background:var(--surface2); border:1px solid var(--border2);
+    border-radius:20px; padding:36px; width:100%; max-width:520px;
+    box-shadow:0 24px 60px rgba(0,0,0,0.6); position:relative;">
+    <button onclick="closeModal()"
+      style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);
+      border:none;border-radius:8px;width:32px;height:32px;color:var(--text-2);
+      font-size:16px;cursor:pointer;">✕</button>
+
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">Register New Student</h2>
+    <p style="color:var(--text-3);font-size:13px;margin-bottom:24px;">
+      Fill in the details — the webcam will open automatically to scan the student's face,
+      then close once registration is complete.
+    </p>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label class="form-label">Student Name</label>
+        <input type="text" name="name" id="f_name" class="form-control" placeholder="e.g. Alice Johnson" required/>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Roll Number</label>
+          <input type="text" name="roll_no" id="f_roll" class="form-control" placeholder="e.g. CS2024001" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Semester</label>
+          <input type="text" name="semester" id="f_sem" class="form-control" placeholder="e.g. 3rd" required/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <input type="text" name="department" id="f_dept" class="form-control" placeholder="e.g. Computer Science" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Classroom</label>
+        {% if classrooms %}
+          <select name="classroom" id="f_class" class="form-control" required>
+            {% for c in classrooms %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+          </select>
+        {% else %}
+          <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);
+            border-radius:8px;padding:10px 14px;font-size:13px;color:var(--amber);">
+            <i class="fas fa-triangle-exclamation"></i>
+            No classrooms available. <a href="{{ url_for('classrooms') }}" style="color:inherit;font-weight:700;">Add a classroom first →</a>
+          </div>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:12px;margin-top:24px;">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-success btn-block" {% if not classrooms %}disabled{% endif %} id="registerBtn">
+          <i class="fas fa-camera"></i> Register &amp; Collect Faces
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Live Registration Progress Toast -->
+<div id="regToast">
+  <div class="toast-header">
+    <div class="toast-icon-wrap running" id="toastIconWrap" style="position:relative;">
+      <i class="fas fa-spinner fa-spin" id="toastIcon"></i>
+    </div>
+    <div>
+      <div class="toast-title" id="toastTitle">Preparing registration…</div>
+      <div class="toast-msg"  id="toastMsg">Please wait</div>
+    </div>
+  </div>
+  <div class="toast-progress-track" id="toastProgressTrack">
+    <div class="toast-progress-bar" id="toastProgressBar"></div>
+  </div>
+</div>
+
+<!-- Success Banner -->
+<div id="successBanner">
+  <div class="banner-emoji">🎉</div>
+  <div class="banner-title" id="bannerTitle">Student Registered!</div>
+  <div class="banner-sub"   id="bannerSub">The face model has been updated automatically.</div>
+  <span class="banner-close" onclick="dismissBanner()">
+    <i class="fas fa-check"></i> Got it
+  </span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  /* ────────────────────────────────────────────────────
+     Modal helpers
+  ──────────────────────────────────────────────────── */
+  function closeModal() {
+    document.getElementById('registerModal').style.display = 'none';
+  }
+
+  /* ────────────────────────────────────────────────────
+     Toast helpers
+  ──────────────────────────────────────────────────── */
+  const toast        = document.getElementById('regToast');
+  const toastIcon    = document.getElementById('toastIcon');
+  const toastIconWrap= document.getElementById('toastIconWrap');
+  const toastTitle   = document.getElementById('toastTitle');
+  const toastMsg     = document.getElementById('toastMsg');
+  const toastBar     = document.getElementById('toastProgressBar');
+  const toastTrack   = document.getElementById('toastProgressTrack');
+
+  function showToast(title, msg, state = 'running', progress = null) {
+    toastTitle.textContent = title;
+    toastMsg.textContent   = msg;
+
+    // Icon & colour
+    toastIconWrap.className = 'toast-icon-wrap ' + state;
+    if (state === 'running') {
+      toastIcon.className = 'fas fa-spinner fa-spin';
+    } else if (state === 'done') {
+      toastIcon.className = 'fas fa-circle-check';
+      // Remove ping ring if exists
+      const old = toastIconWrap.querySelector('.ping-ring');
+      if (!old) {
+        const ring = document.createElement('span');
+        ring.className = 'ping-ring';
+        toastIconWrap.appendChild(ring);
+      }
+    } else {
+      toastIcon.className = 'fas fa-circle-xmark';
+    }
+
+    // Progress bar
+    if (progress !== null) {
+      toastBar.style.width = progress + '%';
+    } else if (state === 'running') {
+      toastBar.style.width = '70%';   // indeterminate "in progress"
+    } else if (state === 'done') {
+      toastBar.style.width = '100%';
+      toastBar.style.background = 'linear-gradient(90deg, var(--green), #86efac)';
+    } else {
+      toastBar.style.width = '100%';
+      toastBar.style.background = 'linear-gradient(90deg, var(--red), #f87171)';
+    }
+
+    toast.style.display = 'flex';
+    // Force reflow then add transition classes
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        toast.classList.add('visible', 'show');
+      });
+    });
+  }
+
+  function hideToast(delay = 3000) {
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        toast.style.display = 'none';
+        toast.classList.remove('visible', 'show');
+        toast.style.opacity = '';
+        toast.style.transform = '';
+        toastBar.style.background = '';
+      }, 400);
+    }, delay);
+  }
+
+  /* ────────────────────────────────────────────────────
+     Success Banner helpers
+  ──────────────────────────────────────────────────── */
+  const banner = document.getElementById('successBanner');
+
+  function showSuccessBanner(studentName) {
+    document.getElementById('bannerTitle').textContent = `🎓 ${studentName} Registered!`;
+    document.getElementById('bannerSub').textContent =
+      'Face scan complete. The student is now in the system and ready for attendance.';
+    banner.style.display = 'block';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => banner.classList.add('show'));
+    });
+    // Auto-dismiss after 8 s
+    setTimeout(dismissBanner, 8000);
+  }
+
+  function dismissBanner() {
+    banner.classList.remove('show');
+    setTimeout(() => { banner.style.display = 'none'; }, 500);
+  }
+
+  /* ────────────────────────────────────────────────────
+     Async Registration Flow
+  ──────────────────────────────────────────────────── */
+  document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const btn  = document.getElementById('registerBtn');
+    const name = document.getElementById('f_name').value.trim();
+
+    // Disable button & close modal
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+    closeModal();
+
+    // Show toast immediately
+    showToast(
+      'Opening Camera…',
+      `Collecting face images for ${name}. Please look at the camera.`,
+      'running'
+    );
+
+    // Build form data
+    const fd = new FormData(this);
+
+    // POST to async endpoint
+    let taskId;
+    try {
+      const res  = await fetch('/api/register/async', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (!json.success) {
+        showToast('Registration Failed', json.message || 'Unknown error.', 'error');
+        hideToast(4000);
+        resetBtn(btn);
+        return;
+      }
+      taskId = json.task_id;
+    } catch (err) {
+      showToast('Network Error', 'Could not reach the server.', 'error');
+      hideToast(4000);
+      resetBtn(btn);
+      return;
+    }
+
+    // Poll status
+    let elapsed = 0;
+    const maxWait = 300000;  // 5 min max
+    const interval = setInterval(async () => {
+      elapsed += 2000;
+      try {
+        const res  = await fetch(`/api/register/status/${taskId}`);
+        const data = await res.json();
+
+        if (data.status === 'running') {
+          // Animate progress up to 90% while running
+          const fakeProgress = Math.min(90, Math.round(elapsed / maxWait * 100 + 30));
+          showToast(
+            'Scanning Face…',
+            `Camera is capturing images for ${name}. Stay still.`,
+            'running',
+            fakeProgress
+          );
+        } else if (data.status === 'done') {
+          clearInterval(interval);
+          showToast('✓ Registration Complete!', data.message, 'done', 100);
+          hideToast(3000);
+          showSuccessBanner(data.student_name || name);
+          resetBtn(btn);
+          // Reload the student list after a short delay
+          setTimeout(() => location.reload(), 3500);
+
+        } else if (data.status === 'error') {
+          clearInterval(interval);
+          showToast('Registration Failed', data.message, 'error');
+          hideToast(5000);
+          resetBtn(btn);
+        }
+      } catch (_) { /* network hiccup — keep polling */ }
+
+      if (elapsed >= maxWait) {
+        clearInterval(interval);
+        showToast('Timeout', 'Registration took too long. Please try again.', 'error');
+        hideToast(5000);
+        resetBtn(btn);
+      }
+    }, 2000);
+  });
+
+  function resetBtn(btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-camera"></i> Register &amp; Collect Faces';
+  }
+</script>
+{% endblock %}

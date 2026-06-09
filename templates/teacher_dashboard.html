@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard{% endblock %}
+{% block topbar_title %}Teacher Dashboard{% endblock %}
+{% block topbar_sub %}Overview of your attendance system{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Overview</h1>
+  <p>Real-time summary of your attendance data</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card c-accent">
+    <div class="stat-icon"><i class="fas fa-user-graduate"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_students }}</div>
+      <div class="stat-label">Registered Students</div>
+    </div>
+  </div>
+  <div class="stat-card c-teal">
+    <div class="stat-icon"><i class="fas fa-door-open"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_classrooms }}</div>
+      <div class="stat-label">Classrooms</div>
+    </div>
+  </div>
+  <div class="stat-card c-green">
+    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.today_records }}</div>
+      <div class="stat-label">Attendance Today</div>
+    </div>
+  </div>
+  <div class="stat-card c-amber">
+    <div class="stat-icon"><i class="fas fa-database"></i></div>
+    <div>
+      <div class="stat-value">{{ stats.total_records }}</div>
+      <div class="stat-label">Total Records</div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card mb-6">
+  <div class="card-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+    <a href="{{ url_for('students') }}" class="btn btn-primary">
+      <i class="fas fa-user-plus"></i> Register Student
+    </a>
+    <a href="{{ url_for('classrooms') }}" class="btn btn-teal">
+      <i class="fas fa-door-open"></i> Manage Classrooms
+    </a>
+    <a href="{{ url_for('subjects') }}" class="btn btn-ghost">
+      <i class="fas fa-book"></i> Manage Subjects
+    </a>
+    <a href="{{ url_for('attendance_page') }}" class="btn btn-success">
+      <i class="fas fa-camera"></i> Start Attendance
+    </a>
+    <a href="{{ url_for('attendance_records') }}" class="btn btn-ghost">
+      <i class="fas fa-table"></i> View Records
+    </a>
+    <a href="{{ url_for('export_page') }}" class="btn btn-amber">
+      <i class="fas fa-file-export"></i> Export Report
+    </a>
+  </div>
+</div>
+
+<!-- Train Model -->
+<div class="card" style="border-color: rgba(99,102,241,0.2);">
+  <div class="card-title"><i class="fas fa-brain"></i> Model Training</div>
+  <p style="color:var(--text-3); font-size:14px; margin-bottom:16px;">
+    Re-train the face recognition model after adding new students or updating datasets.
+    Training may take a few minutes depending on dataset size.
+  </p>
+  <form method="POST" action="{{ url_for('train_model') }}" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> Training...'">
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-microchip"></i> Train Face Encodings
+    </button>
+  </form>
+</div>
+{% endblock %}

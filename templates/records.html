@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Attendance Records{% endblock %}
+{% block topbar_title %}Attendance Records{% endblock %}
+{% block topbar_sub %}Filter and browse all recorded attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Attendance Records</h1>
+  <p>Browse and filter the full attendance log</p>
+</div>
+
+<!-- Filters -->
+<div class="card mb-6">
+  <div class="card-title"><i class="fas fa-filter"></i> Filter Records</div>
+  <form method="GET" action="{{ url_for('attendance_records') }}" id="filterForm">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;align-items:end;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Classroom</label>
+        <select name="classroom" class="form-control" onchange="this.form.submit()">
+          <option value="">All Classrooms</option>
+          {% for c in classrooms %}
+            <option value="{{ c }}" {% if filters.classroom == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Subject</label>
+        <select name="subject" class="form-control" onchange="this.form.submit()">
+          <option value="">All Subjects</option>
+          {% for s in all_subjects %}
+            <option value="{{ s }}" {% if filters.subject == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control"
+               value="{{ filters.date }}" onchange="this.form.submit()"/>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Roll Number</label>
+        <input type="text" name="roll_no" class="form-control"
+               placeholder="Search roll no." value="{{ filters.roll_no }}"/>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">
+          <i class="fas fa-search"></i> Search
+        </button>
+        <a href="{{ url_for('attendance_records') }}" class="btn btn-ghost">
+          <i class="fas fa-xmark"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Results -->
+<div class="card">
+  <div class="card-title d-flex" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <span><i class="fas fa-table"></i> Records Found: <span class="text-accent">{{ records|length }}</span></span>
+    {% if records %}
+    <a href="{{ url_for('export_csv',
+          classroom=filters.classroom,
+          subject=filters.subject) }}"
+       class="btn btn-success btn-sm">
+      <i class="fas fa-download"></i> Export CSV
+    </a>
+    {% endif %}
+  </div>
+
+  {% if records %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Roll No.</th><th>Dept.</th>
+          <th>Semester</th><th>Classroom</th><th>Subject</th>
+          <th>Date</th><th>Time</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td class="fw-700">{{ r[1] }}</td>
+          <td><span class="badge badge-accent mono">{{ r[2] }}</span></td>
+          <td class="text-muted">{{ r[3] or '—' }}</td>
+          <td class="text-muted">{{ r[4] or '—' }}</td>
+          <td><span class="badge badge-teal">{{ r[5] or '—' }}</span></td>
+          <td>{{ r[6] or 'General' }}</td>
+          <td class="mono" style="font-size:12.5px;">{{ r[7] }}</td>
+          <td class="mono" style="font-size:12.5px;">{{ r[8] }}</td>
+          <td>
+            <span class="badge {% if r[9] == 'Present' %}badge-green{% else %}badge-red{% endif %}">
+              {{ r[9] }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-table"></i>
+    <p>No records match your filters. Try adjusting the search criteria.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

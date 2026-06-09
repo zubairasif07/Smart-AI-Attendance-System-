@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}My Attendance{% endblock %}
+{% block topbar_title %}Student Attendance{% endblock %}
+{% block topbar_sub %}Subject-wise attendance records{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex" style="align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div>
+    <h1>Attendance Records</h1>
+    <p>Your complete subject-wise attendance history</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="{{ url_for('student_dashboard') }}" class="btn btn-ghost btn-sm">
+      <i class="fas fa-arrow-left"></i> Back
+    </a>
+    <button type="button" class="btn btn-teal btn-sm" id="quickScanBtn">
+      <i class="fas fa-camera"></i> Scan Face
+    </button>
+  </div>
+
+  <!-- Camera overlay -->
+  <div id="cameraOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;z-index:9999;">
+    <div style="background:var(--surface);padding:18px;border-radius:10px;max-width:720px;width:90%;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong>Camera - Scan Face</strong>
+        <button id="closeCamera" class="btn btn-ghost btn-sm">Close</button>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <video id="video" autoplay playsinline style="width:440px;max-width:100%;border-radius:8px;background:#000;"></video>
+        <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px;">
+          <canvas id="captureCanvas" style="display:none;"></canvas>
+          <div id="scanStatus" style="color:var(--text-3);font-size:14px;min-height:44px;">Position your face in view and press Capture.</div>
+          <div style="display:flex;gap:8px;margin-top:auto;">
+            <button id="captureBtn" class="btn btn-primary">Capture</button>
+            <button id="retryBtn" class="btn btn-ghost" style="display:none;">Retry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not roll_no %}
+  <!-- No roll number entered yet -->
+  <div class="card" style="text-align:center;padding:60px 20px;">
+    <i class="fas fa-id-card" style="font-size:52px;color:var(--accent2);margin-bottom:20px;display:block;opacity:.6;"></i>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:10px;">Search Your Records</h2>
+    <p style="color:var(--text-3);margin-bottom:28px;font-size:14px;">Enter your roll number to view attendance history.</p>
+    <form method="GET" action="{{ url_for('student_attendance') }}" style="max-width:360px;margin:0 auto;">
+      <div class="form-group">
+        <input type="text" name="roll_no" class="form-control" placeholder="Enter Roll Number" required
+               style="font-size:15px;padding:12px 16px;text-align:center;"/>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">
+        <i class="fas fa-search"></i> View Attendance
+      </button>
+    </form>
+  </div>
+
+{% elif not student %}
+  <!-- Roll number entered but not found -->
+  <div class="card" style="text-align:center;padding:60px 20px;border-color:rgba(239,68,68,0.25);">
+    <i class="fas fa-user-slash" style="font-size:52px;color:var(--red);margin-bottom:20px;display:block;opacity:.6;"></i>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:10px;">Student Not Found</h2>
+    <p style="color:var(--text-3);margin-bottom:28px;font-size:14px;">
+      No student registered with roll number <span class="badge badge-red mono">{{ roll_no }}</span>
+    </p>
+    <a href="{{ url_for('student_dashboard') }}" class="btn btn-primary">
+      <i class="fas fa-arrow-left"></i> Try Again
+    </a>
+  </div>
+
+{% else %}
+  <!-- Student Found -->
+
+  <!-- Student Info Card -->
+  <div class="card mb-6" style="border-color:rgba(20,184,166,0.25);">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+      <div style="width:64px;height:64px;border-radius:16px;flex-shrink:0;
+        background:linear-gradient(135deg,rgba(20,184,166,0.2),rgba(6,182,212,0.1));
+        border:1px solid rgba(20,184,166,0.3);
+        display:flex;align-items:center;justify-content:center;
+        font-size:28px;color:var(--teal);
+        box-shadow:0 4px 20px var(--teal-glow);">
+        <i class="fas fa-user-graduate"></i>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:22px;font-weight:800;color:var(--text-1);">{{ student[1] }}</div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <span class="badge badge-accent mono">{{ student[2] }}</span>
+          <span class="badge badge-teal">{{ student[5] or 'No Classroom' }}</span>
+          {% if student[3] %}<span class="badge badge-amber">{{ student[3] }}</span>{% endif %}
+          {% if student[4] %}<span style="font-size:12px;color:var(--text-3);">Semester: {{ student[4] }}</span>{% endif %}
+        </div>
+      </div>
+      <!-- Summary Stats -->
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;
+            color:var(--green);">{{ records|length }}</div>
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+            letter-spacing:.06em;font-weight:600;">Sessions Present</div>
+        </div>
+        {% set subjects_attended = records | map(attribute=6) | list | unique | list %}
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;
+            color:var(--accent2);">{{ subjects_attended | length }}</div>
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;
+            letter-spacing:.06em;font-weight:600;">Subjects</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div class="card">
+    <div class="card-title d-flex" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span><i class="fas fa-list-check"></i> Attendance Log</span>
+      {% if records %}
+      <a href="{{ url_for('export_csv') }}?roll_no={{ roll_no }}" class="btn btn-success btn-sm">
+        <i class="fas fa-download"></i> Export CSV
+      </a>
+      {% endif %}
+    </div>
+
+    {% if records %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Subject</th><th>Date</th><th>Time</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+          <tr>
+            <td class="mono text-muted">{{ loop.index }}</td>
+            <td>
+              <span style="font-weight:600;color:var(--text-1);">{{ r[6] or 'General' }}</span>
+            </td>
+            <td class="mono" style="font-size:12.5px;">{{ r[7] }}</td>
+            <td class="mono" style="font-size:12.5px;">{{ r[8] }}</td>
+            <td>
+              <span class="badge {% if r[9] == 'Present' %}badge-green{% else %}badge-red{% endif %}">
+                <i class="fas {% if r[9] == 'Present' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+                {{ r[9] }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-calendar-xmark"></i>
+      <p>No attendance records found for <strong>{{ student[1] }}</strong>.</p>
+      <p style="margin-top:8px;font-size:13px;">Scan your face during an active session to mark attendance.</p>
+    </div>
+    {% endif %}
+  </div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const quickScanBtn = document.getElementById('quickScanBtn');
+  const cameraOverlay = document.getElementById('cameraOverlay');
+  const video = document.getElementById('video');
+  const captureCanvas = document.getElementById('captureCanvas');
+  const captureBtn = document.getElementById('captureBtn');
+  const closeCamera = document.getElementById('closeCamera');
+  const retryBtn = document.getElementById('retryBtn');
+  const scanStatus = document.getElementById('scanStatus');
+  let stream = null;
+
+  async function openCamera(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      video.srcObject = stream;
+      cameraOverlay.style.display = 'flex';
+      scanStatus.textContent = 'Camera ready. Position your face and press Capture.';
+      captureBtn.disabled = false;
+    }catch(err){
+      alert('Unable to access camera: ' + err.message);
+      quickScanBtn.disabled = false;
+    }
+  }
+
+  function closeCameraOverlay(){
+    cameraOverlay.style.display = 'none';
+    captureBtn.style.display = '';
+    retryBtn.style.display = 'none';
+    scanStatus.textContent = '';
+    if(stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  quickScanBtn.addEventListener('click', function(){
+    quickScanBtn.disabled = true;
+    quickScanBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening camera...';
+    openCamera().finally(()=>{
+      quickScanBtn.disabled = false;
+      quickScanBtn.innerHTML = '<i class="fas fa-camera"></i> Scan Face';
+    });
+  });
+
+  closeCamera.addEventListener('click', closeCameraOverlay);
+
+  captureBtn.addEventListener('click', async function(){
+    captureBtn.disabled = true;
+    scanStatus.textContent = 'Capturing...';
+    // draw current frame
+    captureCanvas.width = video.videoWidth;
+    captureCanvas.height = video.videoHeight;
+    const ctx = captureCanvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+    captureCanvas.toBlob(async function(blob){
+      const fd = new FormData();
+      fd.append('roll_no', '{{ roll_no }}');
+      fd.append('image', blob, 'capture.jpg');
+      scanStatus.textContent = 'Sending image for recognition...';
+      try{
+        const res = await fetch('/student/api/scan', { method: 'POST', body: fd });
+        const data = await res.json();
+        if(data.success){
+          scanStatus.textContent = data.message || 'Attendance marked.';
+        }else{
+          scanStatus.textContent = data.message || 'Recognition failed.';
+        }
+      }catch(e){
+        scanStatus.textContent = 'Error: ' + e.message;
+      }
+      retryBtn.style.display = '';
+      captureBtn.style.display = 'none';
+      captureBtn.disabled = false;
+    }, 'image/jpeg', 0.85);
+  });
+
+  retryBtn.addEventListener('click', function(){
+    retryBtn.style.display = 'none';
+    captureBtn.style.display = '';
+    scanStatus.textContent = 'Position your face and press Capture.';
+  });
+</script>
+{% endblock %}
